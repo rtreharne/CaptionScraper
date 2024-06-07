@@ -1,8 +1,11 @@
-from canvasapi import Canvas
-import getpass
+
 import tqdm
 import os
 import shutil
+from utils import PanoptoSession
+from selenium.webdriver.common.by import By
+import time
+
 
 
 import warnings
@@ -50,89 +53,123 @@ def main():
     print("")
     print("www.canvaswizards.org.uk")
     print("")
-    print("Welcome to the Canvas Assignment Submissions Download (SubDown) Tool!")
-    print("By Robert Treharne, University of Liverpool. 2024")
+    print("Welcome to the Canvas Wizards Caption Scaper Tool!")
+    print("By Robert Treharne and Alan Radford, University of Liverpool. 2024")
     print("")
 
-    # if config.py exists, import it
-    try:
-        from config import CANVAS_URL, CANVAS_TOKEN
-    except ImportError:
-        CANVAS_URL = input('Enter your Canvas URL: ')
-        print("")
-        CANVAS_TOKEN = getpass.getpass('Enter your Canvas token: ')
-        print("")
+    # Ask user for panopto URL
+    panopto_url = input("Please enter the Panopto folder URL: ")
 
-    # if course_id in config.py, use it
-    try:
-        from config import course_id
-    except ImportError:
-        course_id = int(input('Enter the course ID: '))
-        print("")
+    # Start Panopto Session
+    panopto_session = PanoptoSession(panopto_url)
 
-    # if assignment_id in config.py, use it
-    try:
-        from config import assignment_id
-    except ImportError:
-        assignment_id = int(input('Enter the assignment ID: '))
-        print("")
+    # Breathe
+    print("Breathe ...")
+    time.sleep(10)
 
-    canvas = Canvas(CANVAS_URL, CANVAS_TOKEN)
+    # Get video URLs
+    video_urls = get_video_urls(panopto_session)
 
-    print("Getting submissions...")
+    print(video_urls)
 
-    parent_dir = f"course_{course_id}_assignment_{assignment_id}_submissions"
+    for url in tqdm.tqdm(video_urls, desc="Getting transcripts ..."):
+        video_urls[url]["transcript"] = get_transcript(panopto_session, url)
 
-    if not os.path.exists(parent_dir):
-        os.makedirs(parent_dir)
+    # OK I now want to flatten my dictionary into a .csv file with the following headers:
+    # video_url, date, time, transcript_url, transcript_text, transcript_timestamp
+    # I will save this file as transcripts.csv
+    with open("transcripts.tsv", "w") as f:
+        f.write("video_url\tdate\ttime\ttranscript_url\tvideo_timestamp\ttranscript_text\ttranscript_timestamp\n")
+        for url in video_urls:
+            try:
+                for t in video_urls[url]["transcript"]:
+                    f.write(f"{url}\t{video_urls[url]['date']}\t{video_urls[url]['time']}\t{t[0]}\t{t[1]}\t{t[2]}\n")
+            except:
+                continue
 
 
-    submissions = get_submissions(canvas, course_id, assignment_id)
+def get_video_urls(panopto_session):
+    # click button element with aria-label "Table view"
+    table_view_button = panopto_session.browser.find_element(By.XPATH, "//button[@aria-label='Table view']")
+    table_view_button.click()
 
-    os.chdir(parent_dir)
+    # Get all anchor elements on page with class "list-title"
+    elements = panopto_session.browser.find_elements(By.CLASS_NAME, "list-title")
 
-    for submission in tqdm.tqdm(submissions):
-        student_dir = f"{submission.user['sortable_name'].replace(", ", "_")}"
-
-        if not os.path.exists(student_dir):
-            os.makedirs(student_dir)
-        
-        download_submission(submission, student_dir)
-
-    # change back to parent directory
-    os.chdir("..")
-
-    # create a zipped directory
-    shutil.make_archive(parent_dir, 'zip', parent_dir)
+    video_urls = []
+    dates = []
+    times = []
     
-def download_submission(submission, dir):
+    while True:     
+        # Wait for 5 seconds
+        print("wait ...")
+        time.sleep(5)
 
-    # get cwd
-    cwd = os.getcwd()
+        # Get all anchor elements on page with class "list-title"
+        elements = panopto_session.browser.find_elements(By.CLASS_NAME, "list-title")
 
-    # create directory if it doesn't exist
-    if not os.path.exists(dir):
-        os.makedirs(dir)
+        for e in elements:
+            if e.get_attribute("href"):
+                video_urls.append(e.get_attribute("href"))
 
-    # change to directory
-    os.chdir(dir)
-    try:
-        file = submission.attachments[-1]
+        datestamps = panopto_session.browser.find_elements(By.CLASS_NAME, "date-time-container")
+
+        for dt in datestamps:
+            # for each div in dt, get the text
+            date = dt.find_elements(By.TAG_NAME, "div")[0].text
+            t = dt.find_elements(By.TAG_NAME, "div")[1].text
+
+            if date != '':
+                dates.append(date)
+                times.append(t)
+
+        break
+        # Find button element with aria label "Go to next page"
+        try:
+            next_page_button = panopto_session.browser.find_element(By.XPATH, "//button[@aria-label='Go to next page']")
+            next_page_button.click()
+        except:
+            # exit while loop
+            break
+    
+    data = {}
+
+    for url, d, t in zip(video_urls, dates, times):
+        data[url] = {"date": d, "time": t}
         
-        # download file to directory dir
-        file.download(f"{file}")
+    return data
+
+def get_transcript(panopto_session, video_url):
+    panopto_session.browser.get(video_url)
+    time.sleep(5)
+
+    try:
+        transcript_tab = transcript_tab = panopto_session.browser.find_element(By.ID, "transcriptTabHeader")
+        transcript_tab.click()
     except:
-        pass
+        return None
 
-    # change back to cwd
-    os.chdir(cwd)
+    time.sleep(2)
+    transcript_elements = panopto_session.browser.find_elements(By.CLASS_NAME, "event-text")
+    transcript_timestamps = panopto_session.browser.find_elements(By.CLASS_NAME, "event-time")
+    transcript = []
+
+    for x, y in zip(transcript_timestamps, transcript_elements):
+        print(f"{x.text} - {y.text}")
+        try:
+            minute = int(x.text.split(':')[0])
+            second = int(x.text.split(':')[1])
+        except:
+            minute = 0
+            second = 0
+
+        transcript.append((f"{video_url}&start={minute*60 + second}", y.text, x.text))
 
 
-def get_submissions(canvas, course_id, assignment_id):
-    course = canvas.get_course(course_id)
-    assignment = course.get_assignment(assignment_id)
-    submissions = [x for x in assignment.get_submissions(include=['user'])]
-    return submissions[:10]
+    #except:
+        #return None
+        
+    return transcript
 
 
 if __name__ == "__main__":

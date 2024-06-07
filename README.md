@@ -1,6 +1,8 @@
-# SubDown
+# CaptionScraper
 
 Author: Dr. Robert Treharne, School of Life Sciences, University of Liverpool
+
+Idea: Prof. Alan Radford, School of Veterinary Science, University of Liverpool
 
 Version: V1.0
 
@@ -8,9 +10,8 @@ https://www.canvaswizards.org.uk
 
 This tool will:
 
-+ Download all submissions for an assignment
-+ Structure downloaded files into named student folders e.g. "lastname_firstname"
-+ Zip the folders (optional)
++ Allow you to scrape all of the captions out of ALL Panopto videos associated with a Canvas course
++ Save them all in a sortable .tsv file
 
 
 

@@ -7,11 +7,14 @@ import getpass
 import time
 import os
 
-class CanvasSession:
-    def __init__(self):
+class PanoptoSession:
+    def __init__(self, panopto_url):
         # Get username and password from user
         self.username = input("Input your MWS email address: ")
         self.password = getpass.getpass("Input your MWS password: ")
+        self.panopto_url = panopto_url
+
+        print("URL: ", self.panopto_url)
         
         # Configure webdriver
         
@@ -30,7 +33,16 @@ class CanvasSession:
         self.browser = webdriver.Chrome(service=service, options=chrome_options)
         
         # Login
-        self.browser.get('https://canvas.liverpool.ac.uk')
+        self.browser.get(self.panopto_url)
+
+        time.sleep(5)
+
+        # Get anchor element with text "Sign in"
+        sign_in_button = self.browser.find_element(By.XPATH, "//a[contains(text(),'Sign in')]")
+        sign_in_button.click()
+
+        # Wait for the page to load
+        time.sleep(5)
         
         username_input = self.browser.find_element(By.XPATH, "//input[@name='UserName']")
         password_input = self.browser.find_element(By.XPATH, "//input[@name='Password']")
@@ -69,101 +81,7 @@ class CanvasSession:
             print("")
             print("Login Failure")
 
-
-class CMSession:
-    def __init__(self):
-        # Get username and password from user
-        self.username = input("Input your MWS username: ")
-        self.password = getpass.getpass("Input your MWS password: ")
-
-        # Get the current directory
-        current_dir = os.getcwd()
-
-        # Append the file name to the current directory
-        CHROMEDRIVER_PATH = os.path.join(current_dir, 'chromedriver.exe')
-
-        
-        # Configure webdriver
-        service = Service(executable_path=CHROMEDRIVER_PATH)
-        options = Options()
-        options.add_argument('--ignore-certificate-errors')
-        options.add_argument('--headless')
-        self.browser = webdriver.Chrome(service=service, options=options)
-        
-        # Login
-        self.browser.get('https://liverpool-curriculum.worktribe.com/')
-        
-        username_input = self.browser.find_element(By.XPATH, "//input[@name='j_username']")
-        password_input = self.browser.find_element(By.XPATH, "//input[@name='j_password']")
-
-        # Get submit button by text "LOG IN"
-        submit_button = self.browser.find_element(By.CLASS_NAME, "form-button")
-        
-        username_input.send_keys(self.username)
-        password_input.send_keys(self.password)
-        
-        submit_button.click()
-        
-        # Wait for 10 seconds
-        print("wait ...")
-        time.sleep(10)
-        
-        print("Verify your login by DUO")
-
-class TulipSession:
-    def __init__(self):
-        # Get username and password from user
-        self.username = input("Input your MWS username: ")
-        self.password = getpass.getpass("Input your MWS password: ")
-        
-        # Configure webdriver
-        service = Service(executable_path="C:/Users/treharne/Documents/chromedriver.exe")
-        options = Options()
-        options.add_argument('--ignore-certificate-errors')
-        options.add_argument('--headless')
-        self.browser = webdriver.Chrome(service=service, options=options)
-        
-        # Login
-        self.browser.get('https://tulip.liv.ac.uk/pls/new_portal/webwise.tul_bs_portal.home')
-        
-        username_input = self.browser.find_element(By.XPATH, "//input[@name='p_username']")
-        password_input = self.browser.find_element(By.XPATH, "//input[@name='p_password']")
-
-        # Get submit button by text "LOG IN"
-        submit_button = self.browser.find_element(By.XPATH, "//button[contains(text(),'LOG IN')]")
-        
-        username_input.send_keys(self.username)
-        password_input.send_keys(self.password)
-        
-        submit_button.click()
-        
-        # Wait for 5 seconds
-        print("wait ...")
-        time.sleep(5)
-        
-        # Find all elements with the class "verification-code"
-        elements = self.browser.find_elements(By.CLASS_NAME, "verification-code")
-        
-        # Print the text content of each element
-        for element in elements:
-            print("Verification code for DUO")
-            print(element.text)
-
-        # Countdown loop
-        for i in range(20, 0, -1):
-            print("You have {} seconds to enter your verification code.".format(i), end="\r")
-            time.sleep(1)
-        
-        # Confirm trust browser
-        try:
-            self.browser.find_element(By.ID, "trust-browser-button").click()
-            print("")
-            print("Login Success.")
-        except:
-            print("")
-            print("Login Failure")
-
-
 if __name__ == "__main__":
-    session = TulipSession()
+    # Create a Canvas session
+    panopto = PanoptoSession("https://liverpool.cloud.panopto.eu/Panopto/Pages/Auth/Login.aspx?Auth=FolderView&panoptoState=9aa3fa36-a76f-4e1d-a4c5-b18500fed7e7&ErrorKey=Controls_Login_NoFolderAccess")
     
