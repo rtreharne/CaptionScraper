@@ -70,7 +70,6 @@ def main():
     # Get video URLs
     video_urls = get_video_urls(panopto_session)
 
-    print(video_urls)
 
     for url in tqdm.tqdm(video_urls, desc="Getting transcripts ..."):
         video_urls[url]["transcript"] = get_transcript(panopto_session, url)
@@ -155,7 +154,6 @@ def get_transcript(panopto_session, video_url):
     transcript = []
 
     for x, y in zip(transcript_timestamps, transcript_elements):
-        print(f"{x.text} - {y.text}")
         try:
             minute = int(x.text.split(':')[0])
             second = int(x.text.split(':')[1])

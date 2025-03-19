@@ -1,18 +1,34 @@
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.firefox.service import Service
+from selenium.webdriver.firefox.options import Options
 from selenium.webdriver.common.by import By
-from selenium.webdriver.chrome.options import Options
 import getpass
 import time
 import os
 
+
+
 class PanoptoSession:
     def __init__(self, panopto_url):
+
+        self.panopto_url = panopto_url
+
+        # Set Firefox options (optional)
+        options = Options()
+        #options.add_argument("--headless")  # Run in headless mode (remove this if you want to see the browser)
+
+        # Start the WebDriver
+        service = Service("/snap/bin/geckodriver")  # Check path with `which geckodriver`
+        self.browser = webdriver.Firefox(service=service, options=options)
+
+        # Login
+        self.browser.get(self.panopto_url)
+
         # Get username and password from user
         self.username = input("Input your MWS email address: ")
         self.password = getpass.getpass("Input your MWS password: ")
-        self.panopto_url = panopto_url
+        
 
         print("URL: ", self.panopto_url)
         
@@ -21,25 +37,13 @@ class PanoptoSession:
         # Get the current directory
         current_dir = os.getcwd()
 
-        # Append the file name to the current directory
-        CHROMEDRIVER_PATH = os.path.join(current_dir, 'chromedriver.exe')
         
-
-        service = Service(executable_path=CHROMEDRIVER_PATH)
-        chrome_options = Options()
-        chrome_options.add_argument('--headless')
-        chrome_options.add_argument('--log-level=3')
-        chrome_options.add_argument('--ignore-certificate-errors')
-        self.browser = webdriver.Chrome(service=service, options=chrome_options)
-        
-        # Login
-        self.browser.get(self.panopto_url)
 
         time.sleep(5)
 
         # Get anchor element with text "Sign in"
-        sign_in_button = self.browser.find_element(By.XPATH, "//a[contains(text(),'Sign in')]")
-        sign_in_button.click()
+        #sign_in_button = self.browser.find_element(By.XPATH, "//a[contains(text(),'Sign in')]")
+        #sign_in_button.click()
 
         # Wait for the page to load
         time.sleep(5)
